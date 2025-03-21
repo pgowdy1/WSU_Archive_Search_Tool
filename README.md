@@ -51,20 +51,18 @@ Let’s organize everything in one place.
      - Click **File > Save As**, set “Save as type” to **All Files (*.*)**, name it `main.py`, and save it in `C:\Users\YourUsername\Documents\WSU_Archive_Search`.
 
 ### Step 3: Install Required Tools
-The program needs some extra pieces to work. We’ll install them using the Command Prompt.
+The program needs some extra pieces to work. We’ll install them all at once using the Command Prompt.
 
 1. **Open Command Prompt**:
    - Press `Windows Key + S`, type `cmd`, and hit Enter.
 
-2. **Install Dependencies**:
-   - Type each command below, press Enter, and wait for it to finish (it’ll download stuff from the internet):
-     - `pip install lxml`
-     - `pip install sentence-transformers`
-     - `pip install faiss-cpu` *(use `faiss-gpu` if you have an NVIDIA GPU—ask IT if unsure)*
-     - `pip install transformers`
-     - `pip install torch`
-     - `pip install bitsandbytes`
-   - Each might take 1-5 minutes depending on your internet speed. You’ll see text scrolling; when it stops and shows a new line like `C:\>`, it’s done.
+2. **Navigate to Your Folder**:
+   - Type `cd C:\Users\YourUsername\Documents\WSU_Archive_Search_Tool` (replace `YourUsername` with your actual username) and press Enter.
+
+3. **Install Everything**:
+   - Type this command and press Enter:
+     ```cmd
+     pip install -r requirements.txt
 
 ### Step 4: Get a Hugging Face Token
 The program uses a smart language model (Llama) that requires a special key from Hugging Face.
@@ -75,7 +73,7 @@ The program uses a smart language model (Llama) that requires a special key from
    - Check your email for a verification link, click it, and log in.
 
 2. **Request Model Access**:
-   - Go to [meta-llama/Meta-Llama-3.1-8B-Instruct](https://huggingface.co/meta-llama/Meta-Llama-3.1-8B-Instruct) (we’ll use the 8B version—it’s lighter).
+   - Go to [meta-llama/Llama-3.1-8B-Instruct](https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct) (we’ll use the 8B version—it’s lighter).
    - If it says “Gated model,” click **Request Access**, fill out the form (e.g., “Purpose: Archival search tool”), and submit. Approval usually comes within a day.
 
 3. **Get Your Token**:
@@ -123,7 +121,7 @@ Now you’re ready to search!
 
 ## Troubleshooting
 - **Error “Python not found”**: Restart your computer and ensure “Add Python to PATH” was checked during install.
-- **Memory Error**: Your computer might not handle the big Llama model. Edit `main.py`, change `llm_model_name` to `"meta-llama/Meta-Llama-3.1-8B-Instruct"`, and rerun Step 6.
+- **Memory Error**: Your computer might not handle the big Llama model. You might need to find a smaller Llama model that it will run.
 - **“Access Denied”**: Double-check your token and model approval. Wait for Hugging Face approval if needed.
 - **Still Stuck?**: Ask someone tech-savvy to help, or note the exact error and seek assistance.
 

@@ -20,7 +20,7 @@ parser.add_argument('--generate-embeddings', action='store_true', help='Generate
 args = parser.parse_args()
 
 # Load Llama-3.3-70B-Instruct with 4-bit quantization for efficiency
-llm_model_name = "meta-llama/Meta-Llama-3.3-70B-Instruct"  # Check exact name on HF
+llm_model_name = "meta-llama/Llama-3.1-8B-Instruct"  # Check exact name on HF
 hf_token = os.environ.get('HF_TOKEN')  # Get token from environment variable
 
 if not hf_token:
@@ -106,7 +106,7 @@ try:
     with open("processed_chunks.json", "r", encoding='utf-8') as f:
         all_chunks = json.load(f)
 
-    def query_collections(query, top_k=20):
+    def query_collections(query, top_k=25):
         query_emb = model.encode([query])
         distances, indices = index.search(np.array(query_emb), top_k)
         results = [all_chunks[i] for i in indices[0]]
@@ -129,15 +129,17 @@ try:
         # Prompt for Llama
         prompt = (
             f"You are an expert archivist. From these archival finding aid excerpts:\n{context}\n"
-            f"List collections that might contain {query.split('?')[0]} and explain why in a concise manner."
+            f"List collections that might contain {query.split('?')[0]} and explain why in a concise manner." 
+            f"Return up to a maximum of 20 different suggestions, but don't return suggestions you find irrelevant."
+            f"Only return your summarized, concise suggestions."
         )
         
         # Tokenize and generate
         inputs = tokenizer(prompt, return_tensors="pt").to(llm.device)
         outputs = llm.generate(
             **inputs,
-            max_new_tokens=300,  # Adjust based on desired response length
-            temperature=0.7,     # Controls creativity
+            max_new_tokens=3000,  # Adjust based on desired response length
+            temperature=0.3,     # Controls creativity
             do_sample=True       # Enables sampling for varied responses
         )
         response = tokenizer.decode(outputs[0], skip_special_tokens=True)
