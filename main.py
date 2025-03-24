@@ -130,7 +130,7 @@ try:
         prompt = (
             f"You are an expert archivist. From these archival finding aid excerpts:\n{context}\n"
             f"List collections that might contain {query.split('?')[0]} and explain why in a concise manner." 
-            f"Return up to a maximum of 20 different suggestions, but don't return suggestions you find irrelevant."
+            f"Return up to a maximum of 25 different suggestions, but don't return suggestions you find irrelevant."
             f"Only return your summarized, concise suggestions."
         )
         
