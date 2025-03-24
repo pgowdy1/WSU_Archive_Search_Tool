@@ -36,19 +36,13 @@ Python is the tool that runs this program. Let’s get it installed.
 Let’s organize everything in one place.
 
 1. **Create a Folder**:
-   - Open File Explorer (`Windows Key + E`).
-   - Go to `C:\Users\YourUsername\Documents` (replace `YourUsername` with your actual username).
-   - Right-click, select **New > Folder**, and name it `WSU_Archive_Search`.
+   - Download this program from Github:
+     - Click the "<> Code" Button in the Github directory and click "Download ZIP".
+     - Extract the folder to the directory `C:\Users\YourUsername\Documents\` (replace `YourUsername` with your actual username) -- the default name after extraction should be `WSU_Archive_Search_Tool-master`.
 
 2. **Add Your XML Files**:
-   - Inside `WSU_Archive_Search`, create a subfolder called `collections`.
-   - Copy your 4,000+ XML files (e.g., `NTE2sc014.xml`) into the `collections` folder. You can drag and drop them from wherever they are.
-
-3. **Save the Program**:
-   - Copy the code from this project (e.g., `main.py`, provided separately) into a file:
-     - Open Notepad (`Windows Key + S`, type `notepad`, hit Enter).
-     - Paste the code.
-     - Click **File > Save As**, set “Save as type” to **All Files (*.*)**, name it `main.py`, and save it in `C:\Users\YourUsername\Documents\WSU_Archive_Search`.
+   - Inside `WSU_Archive_Search_Tool-master`, create a subfolder called `collections`.
+   - Copy your 4,000+ XML files (e.g., `NTE2sc014.xml`) into the `collections` folder. You can drag and drop them from wherever they are.  
 
 ### Step 3: Install Required Tools
 The program needs some extra pieces to work. We’ll install them all at once using the Command Prompt.
