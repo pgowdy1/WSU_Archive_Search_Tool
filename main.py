@@ -1,153 +1,211 @@
-from lxml import etree
-from sentence_transformers import SentenceTransformer
-import os
-import json
-import logging
-import faiss
-import numpy as np
-import argparse
-from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig  # For quantization
+# Add global exception handler to keep window open on any error
+import sys
+
+def global_exception_handler(exctype, value, traceback):
+    print(f"\nERROR: {exctype.__name__}: {value}")
+    print("\nSee full traceback above.")
+    input("\nPress Enter to exit...")
+    sys.__excepthook__(exctype, value, traceback)  # Call the default handler to show traceback
+
+sys.excepthook = global_exception_handler
+
+try:
+    from llama_index.core import SimpleDirectoryReader, VectorStoreIndex, Settings, StorageContext, load_index_from_storage
+    from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+    from llama_index.llms.huggingface import HuggingFaceLLM
+    from huggingface_hub import login
+    import getpass
+    import torch
+    import os
+    import logging
+    from typing import List
+except Exception as e:
+    print(f"Error importing required modules: {str(e)}")
+    input("\nPress Enter to exit...")
+    exit(1)
 
 # Set up logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-# Argument parser
-parser = argparse.ArgumentParser(description='Process XML files and generate embeddings')
-parser.add_argument('query', help='The search query to find relevant collections')
-parser.add_argument('--process', action='store_true', help='Process XML files and generate new chunks')
-parser.add_argument('--generate-embeddings', action='store_true', help='Generate new embeddings and FAISS index')
-args = parser.parse_args()
-
-# Load Llama-3.3-70B-Instruct with 4-bit quantization for efficiency
-llm_model_name = "meta-llama/Llama-3.1-8B-Instruct"  # Check exact name on HF
-hf_token = os.environ.get('HF_TOKEN')  # Get token from environment variable
-
-if not hf_token:
-    raise ValueError("HF_TOKEN environment variable is not set. Please set it before running the script.")
-
-# Quantization config to fit on modest hardware
-bnb_config = BitsAndBytesConfig(
-    load_in_4bit=True,
-    bnb_4bit_use_double_quant=True,
-    bnb_4bit_quant_type="nf4",
-    bnb_4bit_compute_dtype="float16"
-)
-
-tokenizer = AutoTokenizer.from_pretrained(llm_model_name, token=hf_token)
-llm = AutoModelForCausalLM.from_pretrained(
-    llm_model_name,
-    token=hf_token,
-    quantization_config=bnb_config,
-    device_map="auto"  # Auto-maps to GPU/CPU
-)
-logger.info(f"Loaded LLM: {llm_model_name}")
-
-# Your preprocess_xml function (unchanged)
-def preprocess_xml(file_path):
+# HuggingFace Authentication
+def authenticate_huggingface():
+    # First check for environment variable
+    token = os.environ.get("HUGGINGFACE_TOKEN")
+    
+    if token:
+        logger.info("Found HuggingFace token in environment variables")
+    else:
+        print("\n=== Hugging Face Authentication ===")
+        print("No HUGGINGFACE_TOKEN environment variable found.")
+        print("You need to login to access gated models like Mistral-7B-Instruct-v0.1")
+        print("Please enter your Hugging Face token (find it at https://huggingface.co/settings/tokens)")
+        
+        # Ask for token securely (won't show on screen)
+        token = getpass.getpass("Enter your Hugging Face token: ")
+    
     try:
-        tree = etree.parse(file_path)
-        filename = os.path.basename(file_path)
-        chunks = []
-        for section in ['bioghist', 'scopecontent', 'dsc', 'controlaccess']:
-            text = " ".join(tree.xpath(f"//{section}//text()"))
-            if text:
-                for i in range(0, len(text), 2500):
-                    chunk = f"Collection: {filename}\n{text[i:i+2500]}"
-                    chunks.append({"text": chunk, "metadata": {"file": filename, "section": section}})
-        return chunks
+        # Attempt to login with the provided token
+        login(token=token)
+        logger.info("Authentication successful!")
+        return True
     except Exception as e:
-        logger.error(f"Error processing {file_path}: {str(e)}")
-        return []
+        logger.error(f"Authentication failed: {str(e)}")
+        print("Authentication failed. Check your token and try again.")
+        print("You can set the HUGGINGFACE_TOKEN environment variable to avoid typing it each time.")
+        
+        retry = input("Do you want to try again? (y/n): ")
+        if retry.lower() == 'y':
+            return authenticate_huggingface()
+        return False
 
-# Process XML files if requested (unchanged)
-if args.process:
-    xml_files = [os.path.join("collections", f) for f in os.listdir("collections") if f.endswith(".xml")]
-    all_chunks = []
-    for file in xml_files:
-        logger.info(f"Processing {file}...")
-        chunks = preprocess_xml(file)
-        all_chunks.extend(chunks)
-        logger.info(f"Processed {len(chunks)} chunks from {file}")
-    output_file = "processed_chunks.json"
+# Authenticate before model initialization
+print("Authenticating with Hugging Face...")
+if not authenticate_huggingface():
+    print("Cannot proceed without authentication to access gated models.")
+    input("\nPress Enter to exit...")
+    exit(1)
+
+# Step 1: Configure Local Models with Error Handling
+try:
+    logger.info("Initializing embedding model...")
+    Settings.embed_model = HuggingFaceEmbedding(
+        model_name="sentence-transformers/all-roberta-large-v1",
+        device="cuda" if torch.cuda.is_available() else "cpu"
+    )
+    logger.info("Embedding model initialized successfully")
+except Exception as e:
+    logger.error(f"Failed to initialize embedding model: {str(e)}")
+    input("\nPress Enter to continue after error...")
+    raise
+
+try:
+    logger.info("Initializing LLM...")
+    Settings.llm = HuggingFaceLLM(
+        model_name="mistralai/Mistral-7B-Instruct-v0.1",
+        tokenizer_name="mistralai/Mistral-7B-Instruct-v0.1",
+        context_window=4096,
+        max_new_tokens=256,
+        model_kwargs={"load_in_4bit": True, "torch_dtype": torch.float16},
+        device_map="auto"
+    )
+    logger.info("LLM initialized successfully")
+except Exception as e:
+    logger.error(f"Failed to initialize LLM: {str(e)}")
+    input("\nPress Enter to continue after error...")
+    raise
+
+# Step 2: Batch Load and Index with Error Handling
+input_dir = "./collections/"
+persist_dir = "./index_storage"
+batch_size = 100
+
+try:
+    if not os.path.exists(persist_dir):
+        os.makedirs(persist_dir)
+        logger.info(f"Created persist directory: {persist_dir}")
+except Exception as e:
+    logger.error(f"Failed to create persist directory {persist_dir}: {str(e)}")
+    input("\nPress Enter to continue after error...")
+    raise
+
+try:
+    all_files: List[str] = [os.path.join(input_dir, f) for f in os.listdir(input_dir) if f.endswith(".xml")]
+    if not all_files:
+        raise ValueError(f"No XML files found in {input_dir}")
+    logger.info(f"Found {len(all_files)} XML files")
+except Exception as e:
+    logger.error(f"Failed to list XML files in {input_dir}: {str(e)}")
+    input("\nPress Enter to continue after error...")
+    raise
+
+if os.path.exists(os.path.join(persist_dir, "vector_store.json")):
     try:
-        with open(output_file, 'w', encoding='utf-8') as f:
-            json.dump(all_chunks, f, ensure_ascii=False, indent=2)
-        logger.info(f"Successfully saved {len(all_chunks)} chunks to {output_file}")
+        logger.info("Loading existing index...")
+        storage_context = StorageContext.from_defaults(persist_dir=persist_dir)
+        index = load_index_from_storage(storage_context)
+        logger.info("Existing index loaded successfully")
     except Exception as e:
-        logger.error(f"Error saving chunks to file: {str(e)}")
+        logger.error(f"Failed to load existing index from {persist_dir}: {str(e)}")
+        input("\nPress Enter to continue after error...")
+        raise
 else:
-    logger.info("Using existing processed_chunks.json")
+    logger.info("Building new index...")
+    index = None
+    for i in range(0, len(all_files), batch_size):
+        batch_files = all_files[i:i + batch_size]
+        logger.info(f"Processing batch {i // batch_size + 1} ({len(batch_files)} files)...")
+        
+        try:
+            documents = SimpleDirectoryReader(input_files=batch_files).load_data()
+            logger.info(f"Loaded {len(documents)} documents in batch {i // batch_size + 1}")
+        except Exception as e:
+            logger.error(f"Failed to load documents in batch {i // batch_size + 1}: {str(e)}")
+            input("\nPress Enter to continue after error...")
+            continue  # Skip this batch, move to next
 
-# Load chunks (unchanged)
+        try:
+            if index is None:
+                index = VectorStoreIndex.from_documents(documents)
+                logger.info("Initialized index with first batch")
+            else:
+                for doc in documents:
+                    index.insert(doc)
+                logger.info(f"Inserted {len(documents)} documents into index")
+        except Exception as e:
+            logger.error(f"Failed to build/index documents in batch {i // batch_size + 1}: {str(e)}")
+            input("\nPress Enter to continue after error...")
+            continue
+
+        try:
+            index.storage_context.persist(persist_dir=persist_dir)
+            logger.info(f"Batch {i // batch_size + 1} saved to {persist_dir}")
+        except Exception as e:
+            logger.error(f"Failed to save batch {i // batch_size + 1} to {persist_dir}: {str(e)}")
+            input("\nPress Enter to continue after error...")
+            continue
+
+    if index is None:
+        logger.error("Index building failed entirely - no batches succeeded")
+        input("\nPress Enter to continue after error...")
+        raise ValueError("Index creation failed")
+
+# Step 3: Query with Error Handling
 try:
-    with open("processed_chunks.json", 'r', encoding='utf-8') as f:
-        loaded_chunks = json.load(f)
-    logger.info(f"Loaded {len(loaded_chunks)} chunks from processed_chunks.json")
+    logger.info("Setting up query engine...")
+    query_engine = index.as_query_engine(similarity_top_k=3)
+    logger.info("Query engine ready")
 except Exception as e:
-    logger.error(f"Error loading chunks from file: {str(e)}")
-    loaded_chunks = []
+    logger.error(f"Failed to set up query engine: {str(e)}")
+    input("\nPress Enter to continue after error...")
+    raise
 
-# Generate embeddings if requested (unchanged)
-model = SentenceTransformer('all-MiniLM-L6-v2')
-if args.generate_embeddings:
-    embeddings = model.encode([chunk["text"] for chunk in loaded_chunks], show_progress_bar=True)
-    dimension = 384
-    index = faiss.IndexFlatL2(dimension)
-    index.add(np.array(embeddings))
-    faiss.write_index(index, "ead_index.faiss")
-    logger.info("Successfully generated embeddings and created FAISS index")
-else:
-    logger.info("Using existing FAISS index")
-
-# Query function with Llama
 try:
-    index = faiss.read_index("ead_index.faiss")
-    with open("processed_chunks.json", "r", encoding='utf-8') as f:
-        all_chunks = json.load(f)
-
-    def query_collections(query, top_k=25):
-        query_emb = model.encode([query])
-        distances, indices = index.search(np.array(query_emb), top_k)
-        results = [all_chunks[i] for i in indices[0]]
-        
-        collections = {}
-        for r in results:
-            file = r['metadata']['file']
-            if file not in collections:
-                collections[file] = {'sections': set(), 'excerpts': []}
-            collections[file]['sections'].add(r['metadata']['section'])
-            text_content = r['text'].split('\n', 1)[1] if '\n' in r['text'] else r['text']
-            preview = text_content[:1000] + "..." if len(text_content) > 1000 else text_content
-            collections[file]['excerpts'].append(preview)
-
-        context = ""
-        for file, data in collections.items():
-            context += f"Collection: {file} (Sections: {', '.join(data['sections'])})\n"
-            context += "Excerpts:\n" + "\n".join([f"- {e}" for e in data['excerpts']]) + "\n\n"
-
-        # Prompt for Llama
-        prompt = (
-            f"You are an expert archivist. From these archival finding aid excerpts:\n{context}\n"
-            f"List collections that might contain {query.split('?')[0]} and explain why in a concise manner." 
-            f"Return up to a maximum of 25 different suggestions, but don't return suggestions you find irrelevant."
-            f"Only return your summarized, concise suggestions."
-        )
-        
-        # Tokenize and generate
-        inputs = tokenizer(prompt, return_tensors="pt").to(llm.device)
-        outputs = llm.generate(
-            **inputs,
-            max_new_tokens=3000,  # Adjust based on desired response length
-            temperature=0.3,     # Controls creativity
-            do_sample=True       # Enables sampling for varied responses
-        )
-        response = tokenizer.decode(outputs[0], skip_special_tokens=True)
-        
-        return response
-
-    # Run the query
-    print(query_collections(args.query))
+    query = "What records relate to Ernest O. Holland from 1924?"
+    logger.info(f"Running sample query: {query}")
+    response = query_engine.query(query)
+    print(f"Query: {query}")
+    print(f"Response: {response}")
 except Exception as e:
-    logger.error(f"Error during query: {str(e)}")
-    logger.error("Ensure --process and --generate-embeddings have been run")
+    logger.error(f"Sample query failed: {str(e)}")
+    input("\nPress Enter to continue after error...")
+
+# Step 4: Interactive Query Loop with Error Handling
+while True:
+    try:
+        user_query = input("Enter your query (or 'exit' to quit): ")
+        if user_query.lower() == "exit":
+            break
+        logger.info(f"Running user query: {user_query}")
+        response = query_engine.query(user_query)
+        print(f"Response: {response}")
+    except Exception as e:
+        logger.error(f"User query failed: {str(e)}")
+        print(f"Error: {str(e)}")
+        input("\nPress Enter to continue after error...")
+        continue
+
+logger.info("Script completed")
+
+# Keep window open
+input("\nPress Enter to exit...")

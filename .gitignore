@@ -2,3 +2,5 @@
 collections/
 
 ead_index.faiss
+
+index_storage/
