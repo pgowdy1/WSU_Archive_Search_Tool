@@ -1,12 +1,12 @@
-# main.py
 import sys
 import argparse
 import os
 import logging
 import getpass
+import json
 import torch
-from huggingface_hub import login
-from ead_parser import ead_xml_loader  # Import the custom parser
+import openai
+from ead_parser import SmartEADXMLReader
 
 def global_exception_handler(exctype, value, traceback):
     print(f"\nERROR: {exctype.__name__}: {value}")
@@ -19,7 +19,6 @@ sys.excepthook = global_exception_handler
 try:
     from llama_index.core import SimpleDirectoryReader, VectorStoreIndex, Settings, StorageContext, load_index_from_storage
     from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-    from llama_index.llms.huggingface import HuggingFaceLLM
 except Exception as e:
     print(f"Error importing required modules: {str(e)}")
     input("\nPress Enter to exit...")
@@ -29,67 +28,52 @@ except Exception as e:
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-# HuggingFace Authentication
-def authenticate_huggingface():
-    token = os.environ.get("HUGGINGFACE_TOKEN")
-    if token:
-        logger.info("Found HuggingFace token in environment variables")
+# OpenAI Authentication
+def authenticate_openai():
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if api_key:
+        logger.info("Found OpenAI API key in environment variables")
     else:
-        print("\n=== Hugging Face Authentication ===")
-        print("No HUGGINGFACE_TOKEN environment variable found.")
-        print("Please enter your Hugging Face token (find it at https://huggingface.co/settings/tokens)")
-        token = getpass.getpass("Enter your Hugging Face token: ")
+        print("\n=== OpenAI Authentication ===")
+        print("No OPENAI_API_KEY environment variable found.")
+        api_key = getpass.getpass("Enter your OpenAI API key: ")
     
     try:
-        login(token=token)
-        logger.info("Authentication successful!")
-        return True
+        openai.api_key = api_key
+        openai.models.list()  # Test API key
+        logger.info("OpenAI authentication successful!")
+        return api_key
     except Exception as e:
-        logger.error(f"Authentication failed: {str(e)}")
-        print("Authentication failed. Check your token and try again.")
-        retry = input("Do you want to try again? (y/n): ")
-        if retry.lower() == 'y':
-            return authenticate_huggingface()
-        return False
+        logger.error(f"OpenAI authentication failed: {str(e)}")
+        print("Authentication failed. Check your API key and try again.")
+        return None
 
 # Parse command-line arguments
-parser = argparse.ArgumentParser(description="Query EAD XML files with LlamaIndex")
+parser = argparse.ArgumentParser(description="RAG Query over EAD XML files with ChatGPT")
 parser.add_argument("--rebuild", action="store_true", help="Force rebuild of the VectorStore index")
+parser.add_argument("--show_retrieved", action="store_true", help="Print retrieved documents during queries")
 args = parser.parse_args()
 
 # Authenticate
-print("Authenticating with Hugging Face...")
-if not authenticate_huggingface():
-    print("Cannot proceed without authentication.")
+print("Authenticating with OpenAI...")
+openai_api_key = authenticate_openai()
+if not openai_api_key:
+    print("Cannot proceed without OpenAI authentication.")
     input("\nPress Enter to exit...")
     exit(1)
+openai.api_key = openai_api_key
 
-# Step 1: Configure Models
+# Step 1: Configure Embedding Model
 try:
     logger.info("Initializing embedding model...")
     Settings.embed_model = HuggingFaceEmbedding(
         model_name="sentence-transformers/all-roberta-large-v1",
         device="cuda" if torch.cuda.is_available() else "cpu"
     )
+    Settings.chunk_size = 4096
     logger.info("Embedding model initialized successfully")
 except Exception as e:
     logger.error(f"Failed to initialize embedding model: {str(e)}")
-    input("\nPress Enter to continue after error...")
-    raise
-
-try:
-    logger.info("Initializing LLM...")
-    Settings.llm = HuggingFaceLLM(
-        model_name="mistralai/Mistral-7B-Instruct-v0.1",
-        tokenizer_name="mistralai/Mistral-7B-Instruct-v0.1",
-        context_window=4096,
-        max_new_tokens=1024,
-        model_kwargs={"torch_dtype": torch.float16},
-        device_map="auto"
-    )
-    logger.info("LLM initialized successfully")
-except Exception as e:
-    logger.error(f"Failed to initialize LLM: {str(e)}")
     input("\nPress Enter to continue after error...")
     raise
 
@@ -139,7 +123,7 @@ else:
         logger.info(f"Processing batch {i // batch_size + 1} ({len(batch_files)} files)...")
         
         try:
-            reader = SimpleDirectoryReader(input_files=batch_files, file_loader=ead_xml_loader)
+            reader = SimpleDirectoryReader(input_files=batch_files, file_extractor={".xml": SmartEADXMLReader()})
             documents = reader.load_data()
             logger.info(f"Loaded {len(documents)} documents in batch {i // batch_size + 1}")
         except Exception as e:
@@ -173,36 +157,114 @@ else:
         input("\nPress Enter to continue after error...")
         raise ValueError("Index creation failed")
 
-# Step 3: Query Setup
-try:
-    logger.info("Setting up query engine...")
-    query_engine = index.as_query_engine(similarity_top_k=8)
-    logger.info("Query engine ready")
-except Exception as e:
-    logger.error(f"Failed to set up query engine: {str(e)}")
-    input("\nPress Enter to continue after error...")
-    raise
+# Step 3: RAG Query Function
+def run_rag_query(query, index, top_k=30, show_retrieved=False):
+    try:
+        # Step 1: Retrieve documents
+        retriever = index.as_retriever(
+            similarity_top_k=top_k,
+            retriever_mode="hybrid"
+        )
+        
+        # Step 2: Retrieve DISTINCT documents. We don't want a bunch from the same collection.
+        nodes = retrieve_distinct_documents(query, index, top_k=30, overfetch_k=100)
+
+        # Step 3: Build a clean context
+        selected_contexts = []
+
+        for idx, node in enumerate(nodes, start=1):
+            # Only include important metadata fields
+            metadata = node.metadata or {}
+            display_metadata = {
+                k: v for k, v in metadata.items()
+                if k.lower() in ("collection_unitid", "title", "date", "scopecontent", "bibliography")
+            }
+
+            formatted_doc = (
+                f"Document {idx}:\n"
+                f"Metadata:\n{json.dumps(display_metadata, indent=2)}\n"
+                f"Content:\n{node.text.strip()}\n"
+            )
+            selected_contexts.append(formatted_doc)
+
+        # If show_retrieved flag is enabled, print documents
+        if show_retrieved:
+            print("\n=== Retrieved Documents (after filtering) ===")
+            for doc in selected_contexts:
+                print(doc[:300])
+                print("\n---\n")
+            print("\n============================================\n")
+
+        if not selected_contexts:
+            logger.warning("No documents selected after token filtering.")
+            return "No relevant documents found or context budget too small."
+
+        context_text = "\n\n".join(selected_contexts)
+
+        # Step 4: Build the prompt
+        prompt = (
+            "You are an expert archivist.\n\n"
+            "Based on the following retrieved archival documents, select the collections that are most relevant to the user's research question.\n\n"
+            "Do not invent new information. Only suggest collections or items found in the retrieved documents. Do not retrieve multiple items with the same collection_unitid\n\n"
+            "For each recommended document, provide:\n"
+            "- The collection_unitid\n"
+            "- The unitid if not null\n"
+            "- The title\n"
+            "- Any available date\n"
+            "- A brief reason (1-2 sentences) why this document might help with the research query.\n\n"
+            f"Query: '{query}'\n\n"
+            f"Retrieved Documents:\n{context_text}\n\n"
+        )
+
+        # Step 5: Query the LLM
+        response = openai.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You are a precise and factual archivist."},
+                {"role": "user", "content": prompt}
+            ],
+            max_completion_tokens=4096,
+            temperature=0.3
+        )
+        return response.choices[0].message.content
+
+    except Exception as e:
+        logger.error(f"RAG query failed: {str(e)}")
+        return f"Error: {str(e)}"
+
+def retrieve_distinct_documents(query, index, top_k=30, overfetch_k=300):
+    retriever = index.as_retriever(
+        similarity_top_k=overfetch_k,
+        retriever_mode="hybrid"
+    )
+    nodes = retriever.retrieve(query)
+
+    # Deduplicate by collection_unitid
+    seen_collections = set()
+    distinct_nodes = []
+    for node in nodes:
+        collection_unitid = node.metadata.get('collection_unitid')
+        if not collection_unitid:
+            continue  # If missing collection ID, skip it
+        if collection_unitid not in seen_collections:
+            seen_collections.add(collection_unitid)
+            distinct_nodes.append(node)
+        if len(distinct_nodes) >= top_k:
+            break
+
+    return distinct_nodes
+
 
 # Step 4: Interactive Query Loop
-print("\nQuery engine is ready!")
+print("\nRAG query engine is ready!")
 while True:
     try:
         user_query = input("Enter your query (or 'exit' to quit): ")
         if user_query.lower() == "exit":
             break
         logger.info(f"Running user query: {user_query}")
-        formatted_query = (
-            f"Search an EAD XML archival collection for components (series, folders, or items) relevant to '{user_query}'. "
-            f"Return a numbered list of up to 10 specific components with: "
-            f"1. Identifier: File name and unitid (e.g., 'NTE2cg1769.xml, folder_023') or unittitle if unitid is unavailable. "
-            f"2. Relevance: One sentence explaining why it matches, citing a specific keyword or phrase from scopecontent, unittitle, or controlaccess/subject. "
-            f"Prioritize folder or item-level results over collections or series. "
-            f"If no relevant components are found, state why (e.g., 'No folders mention {user_query} in scopecontent or subjects') and suggest one specific alternative term. "
-            f"Avoid vague phrases like 'may provide context' or repetitive responses."
-        )
-        response = query_engine.query(formatted_query)
-        logger.info(f"Retrieved: {[doc.metadata for doc in response.source_nodes]}")
-        print(f"Response: {response}")
+        response = run_rag_query(user_query, index, show_retrieved=args.show_retrieved)
+        print(f"Response:\n{response}")
     except Exception as e:
         logger.error(f"User query failed: {str(e)}")
         print(f"Error: {str(e)}")

@@ -4,3 +4,7 @@ collections/
 ead_index.faiss
 
 index_storage/
+
+__pycache__/
+
+short_collections/
