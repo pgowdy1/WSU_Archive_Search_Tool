@@ -1,127 +1,131 @@
+# WSU Archive Search Tool
 
----
+Welcome to the WSU Archive Search Tool! This program helps you search through archival collection files (in XML format) to find materials related to your research questions. It uses advanced AI technology to understand your queries and find relevant documents from the archives.
 
-# WSU Archive Search Tool README
+## What You'll Need
 
-Welcome to the **WSU Archive Search Tool**! This program helps archivists search through over 4,000 archival collection files (in XML format) to find materials related to their questions—like “What collections have information on Washington State's involvement in the Spanish-American war?” It’s easy to use once set up, and this guide will walk you through everything on a Windows computer, even if you’ve never programmed before.
+- A Windows computer (Windows 10 or 11 recommended)
+- At least 16 GB of RAM (32 GB is better)
+- 50 GB of free disk space
+- An internet connection
+- An OpenAI API key (we'll help you get this)
+- A folder containing your XML collection files
 
-## What You’ll Need
-- A Windows computer (Windows 10 or 11 recommended) with at least **16 GB of RAM** (32 GB is better) and **50 GB of free disk space**.
-- An **internet connection** for setup.
-- A folder with your XML collection files (e.g., `collections` folder containing files like `NTE2sc014.xml`).
-- About **1-2 hours** for setup (depending on your internet speed).
-
-## Step-by-Step Setup Instructions
+## Step-by-Step Setup Guide
 
 ### Step 1: Install Python
-Python is the tool that runs this program. Let’s get it installed.
 
-1. **Download Python**:
-   - Open your web browser (e.g., Chrome, Edge) and go to [python.org/downloads](https://www.python.org/downloads/).
-   - Click the big yellow button that says **Download Python 3.11.x** (or the latest 3.x version).
-   - Save the file (e.g., `python-3.11.x.exe`) to your Downloads folder.
+1. Download Python:
+   - Go to [python.org/downloads](https://www.python.org/downloads/)
+   - Click the big yellow "Download Python" button
+   - Save the installer to your computer
 
-2. **Install Python**:
-   - Double-click the downloaded file to run it.
-   - **Important**: Check the box that says **Add Python to PATH** at the bottom of the installer window.
-   - Click **Install Now** and wait (it’ll take a few minutes).
-   - When it says “Setup was successful,” click **Close**.
+2. Install Python:
+   - Double-click the downloaded file
+   - **Important**: Check the box that says "Add Python to PATH"
+   - Click "Install Now"
+   - Wait for the installation to complete
+   - Click "Close" when done
 
-3. **Check It Worked**:
-   - Press `Windows Key + S`, type `cmd`, and hit Enter to open the Command Prompt.
-   - Type `python --version` and press Enter.
-   - You should see something like `Python 3.11.x`. If you do, great! If not, restart your computer and try again.
+### Step 2: Get an OpenAI API Key
 
-### Step 2: Set Up a Project Folder
-Let’s organize everything in one place.
+1. Create an OpenAI account:
+   - Go to [platform.openai.com](https://platform.openai.com/)
+   - Click "Sign Up" and create an account
+   - Verify your email address
 
-1. **Create a Folder**:
-   - Download this program from Github:
-     - Click the "<> Code" Button in the Github directory and click "Download ZIP".
-     - Extract the folder to the directory `C:\Users\YourUsername\Documents\` (replace `YourUsername` with your actual username) -- the default name after extraction should be `WSU_Archive_Search_Tool-master`.
+2. Get your API key:
+   - Log in to your OpenAI account
+   - Click on your profile picture
+   - Select "View API keys"
+   - Click "Create new secret key"
+   - Copy the key and save it somewhere safe
 
-2. **Add Your XML Files**:
-   - Inside `WSU_Archive_Search_Tool-master`, create a subfolder called `collections`.
-   - Copy your 4,000+ XML files (e.g., `NTE2sc014.xml`) into the `collections` folder. You can drag and drop them from wherever they are.  
+### Step 3: Set Up the Program
 
-### Step 3: Install Required Tools
-The program needs some extra pieces to work. We’ll install them all at once using the Command Prompt.
+1. Download the program:
+   - Download the program files from the repository
+   - Extract them to a folder on your computer (e.g., `C:\Users\YourName\Documents\WSU_Archive_Search_Tool`)
 
-1. **Open Command Prompt**:
-   - Press `Windows Key + S`, type `cmd`, and hit Enter.
-
-2. **Navigate to Your Folder**:
-   - Type `cd C:\Users\YourUsername\Documents\WSU_Archive_Search_Tool` (replace `YourUsername` with your actual username) and press Enter.
-
-3. **Install Everything**:
-   - Type this command and press Enter:
-     ```cmd
+2. Install required software:
+   - Open Command Prompt (press Windows key + R, type `cmd`, press Enter)
+   - Navigate to your program folder:
+     ```
+     cd C:\Users\YourName\Documents\WSU_Archive_Search_Tool
+     ```
+   - Install the required packages:
+     ```
      pip install -r requirements.txt
+     ```
 
-### Step 4: Get a Hugging Face Token
-The program uses a smart language model (Llama) that requires a special key from Hugging Face.
+3. Add your XML files:
+   - Create a folder called `collections` in your program directory
+   - Copy your XML files into this folder
 
-1. **Sign Up**:
-   - Open your browser and go to [huggingface.co](https://huggingface.co/).
-   - Click **Sign Up** (top right), enter your email, a username, and a password, then click **Create Account**.
-   - Check your email for a verification link, click it, and log in.
+### Step 4: Run the Program
 
-2. **Request Model Access**:
-   - Go to [meta-llama/Llama-3.1-8B-Instruct](https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct) (we’ll use the 8B version—it’s lighter).
-   - If it says “Gated model,” click **Request Access**, fill out the form (e.g., “Purpose: Archival search tool”), and submit. Approval usually comes within a day.
+1. First-time setup:
+   - Open Command Prompt
+   - Navigate to your program folder
+   - Run the program:
+     ```
+     python main.py
+     ```
+   - When prompted, enter your OpenAI API key
+   - The program will process your XML files (this may take some time)
 
-3. **Get Your Token**:
-   - After logging in, click your profile picture (top right) > **Settings** > **Access Tokens**.
-   - Click **New Token**, name it (e.g., “ArchiveTool”), select **Read**, and click **Generate**.
-   - Copy the token (e.g., `hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`) and save it in a text file (e.g., `token.txt` in your project folder).
+2. Searching the archives:
+   - Once the program is ready, you can enter your search queries
+   - For example:
+     - "What collections have information about early Washington State history?"
+     - "Find documents related to student life in the 1960s"
+     - "Search for materials about agricultural research"
+   - Type 'exit' when you want to quit
 
-### Step 5: Update the Program with Your Token
-You need to add your token to the code.
+## Example Queries
 
-1. **Open the Code**:
-   - Open `main.py` in Notepad (right-click `main.py` > **Open with** > **Notepad**).
+Here are some example queries you can try:
 
-2. **Find and Replace**:
-   - Look for the line `hf_token = "your_hf_token_here"`.
-   - Replace `"your_hf_token_here"` with your token (e.g., `hf_token = "hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"`).
-   - Save the file (**File > Save**).
-
-### Step 6: Prepare the Search Data (First-Time Setup)
-Before searching, the program needs to process your XML files.
-
-1. **Open Command Prompt**:
-   - Press `Windows Key + S`, type `cmd`, right-click **Command Prompt**, and select **Run as administrator**.
-
-2. **Navigate to Your Folder**:
-   - Type `cd C:\Users\YourUsername\Documents\WSU_Archive_Search` (replace `YourUsername`) and press Enter.
-
-3. **Run the Processing**:
-   - Type `python main.py "test query" --process --generate-embeddings` and press Enter.
-   - This reads all XML files in the `collections` folder, breaks them into chunks, and builds a search index. It’ll take **1-4 hours** depending on your computer and file count.
-   - You’ll see progress messages like “Processing NTE2sc014.xml...” and a progress bar. When it’s done, it’ll save `processed_chunks.json` and `ead_index.faiss` in your folder.
-
-### Step 7: Search the Archives
-Now you’re ready to search!
-
-1. **Run a Search**:
-   - In the same Command Prompt (still in your project folder), type:
-     ```cmd
-     python main.py "What collections have information on Washington State's involvement in the Spanish-American war?"
-
-2. **Try Other Queries**:
-    - Replace the query with anything you're looking for, like:
-    python main.py "What collections might relate to the history of queer students at WSU?"
-    python main.py "Where can I look to find letters or diaries written by women between 1750-1754?"
+1. "Find collections related to World War II at Washington State"
+2. "Search for documents about early campus buildings"
+3. "What materials exist about student protests in the 1970s?"
+4. "Find information about agricultural research in the 1950s"
+5. "Search for letters or diaries from early faculty members"
 
 ## Troubleshooting
-- **Error “Python not found”**: Restart your computer and ensure “Add Python to PATH” was checked during install.
-- **Memory Error**: Your computer might not handle the big Llama model. You might need to find a smaller Llama model that it will run.
-- **“Access Denied”**: Double-check your token and model approval. Wait for Hugging Face approval if needed.
-- **Still Stuck?**: Ask someone tech-savvy to help, or note the exact error and seek assistance.
 
-## Tips
-- **First Run**: Step 6 is only needed once unless you add new XML files.
-- **Speed**: If you have a gaming PC with an NVIDIA GPU, install `faiss-gpu` and `torch` with CUDA support for faster processing—ask IT for help.
-- **Output**: Results show collections and why they match, making it easy to decide what to pull from the archives.
+If you encounter any issues:
 
-Enjoy searching the WSU archives with this tool! 
+1. **Python not found error**:
+   - Make sure Python is installed correctly
+   - Restart your computer
+   - Try running `python --version` in Command Prompt to verify installation
+
+2. **Missing files error**:
+   - Check that your XML files are in the `collections` folder
+   - Make sure the folder name is spelled exactly as "collections"
+
+3. **API key issues**:
+   - Verify your OpenAI API key is correct
+   - Make sure you have sufficient credits in your OpenAI account
+
+4. **Memory errors**:
+   - Close other programs to free up memory
+   - Consider using a computer with more RAM
+
+## Tips for Better Searches
+
+1. Be specific in your queries
+2. Use natural language (like you're asking a question)
+3. Include relevant time periods when possible
+4. Try different phrasings if you don't find what you're looking for
+5. The program works best with detailed, focused questions
+
+## Need Help?
+
+If you're having trouble with the program:
+1. Check the troubleshooting section above
+2. Make sure you've followed all setup steps
+3. Contact technical support with any error messages you see
+
+Happy searching! 
