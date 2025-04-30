@@ -159,17 +159,11 @@ else:
 
 # Step 3: RAG Query Function
 def run_rag_query(query, index, top_k=30, show_retrieved=False):
-    try:
-        # Step 1: Retrieve documents
-        retriever = index.as_retriever(
-            similarity_top_k=top_k,
-            retriever_mode="hybrid"
-        )
-        
-        # Step 2: Retrieve DISTINCT documents. We don't want a bunch from the same collection.
+    try:       
+        # Step 1: Retrieve DISTINCT documents. We don't want a bunch from the same collection.
         nodes = retrieve_distinct_documents(query, index, top_k=30)
 
-        # Step 3: Build a clean context
+        # Step 2: Build a clean context
         selected_contexts = []
 
         for idx, node in enumerate(nodes, start=1):
@@ -201,22 +195,23 @@ def run_rag_query(query, index, top_k=30, show_retrieved=False):
 
         context_text = "\n\n".join(selected_contexts)
 
-        # Step 4: Build the prompt
+        # Step 3: Build the prompt
         prompt = (
             "You are an expert archivist.\n\n"
             "Based on the following retrieved archival documents, select the collections that are most relevant to the user's research question.\n\n"
             "Do not invent new information. Only suggest collections or items found in the retrieved documents. Do not retrieve multiple items with the same collection_unitid\n\n"
             "For each recommended document, provide:\n"
             "- The collection_unitid\n"
-            "- The unitid if not null\n"
+            "- Container (box)\n"
             "- The title\n"
             "- Any available date\n"
+            "- A score from 1-10 on how relevant you think it is to the user's query\n"
             "- A brief reason (1-2 sentences) why this document might help with the research query.\n\n"
             f"Query: '{query}'\n\n"
             f"Retrieved Documents:\n{context_text}\n\n"
         )
 
-        # Step 5: Query the LLM
+        # Step 4: Query the LLM
         response = openai.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -224,7 +219,7 @@ def run_rag_query(query, index, top_k=30, show_retrieved=False):
                 {"role": "user", "content": prompt}
             ],
             max_completion_tokens=4096,
-            temperature=0.3
+            temperature=0.5
         )
         return response.choices[0].message.content
 
