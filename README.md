@@ -39,7 +39,36 @@ Welcome to the WSU Archive Search Tool! This program helps you search through ar
 
 **Note**: This program requires Python 3.10 specifically. Other versions (including newer ones) may cause compatibility issues with the required packages.
 
-### Step 2: Get an OpenAI API Key
+### Step 2: Download the Project from GitHub
+
+1. **Get the Project Files**:
+   - From the project's repo on GitHub, click the green "Code" button near the top of the page
+   - Click "Download ZIP" from the dropdown menu
+   - Save the ZIP file to your computer (e.g., in your Downloads folder)
+
+2. **Extract the Files**:
+   - Navigate to where you saved the ZIP file
+   - Right-click the ZIP file and select "Extract All..."
+   - Choose a location to extract to (e.g., `C:\Users\YourUsername\Documents\`)
+   - Click "Extract"
+   - The extracted folder will be named `WSU_Archive_Search_Tool-master`
+
+3. **Rename the Folder (Optional but Recommended)**:
+   - Right-click the extracted folder
+   - Select "Rename"
+   - Type `WSU_Archive_Search_Tool` and press Enter
+   - This makes the folder name simpler and matches the instructions below
+
+4. **Verify the Contents**:
+   - Open the folder
+   - You should see these important files:
+     - `main.py`
+     - `requirements.txt`
+     - `README.md`
+     - `ead_parser.py`
+   - If any of these files are missing, you may need to download the project again
+
+### Step 3: Get an OpenAI API Key
 
 **Option A: Get an API Key from the Program Owner (Recommended)**
 - Contact the program owner to request an API key
@@ -71,7 +100,7 @@ Welcome to the WSU Archive Search Tool! This program helps you search through ar
      ```
      You should see your API key displayed
 
-### Step 3: Set Up the Program
+### Step 4: Set Up the Program
 
 1. Download the program:
    - Download the program files from the repository
@@ -92,7 +121,7 @@ Welcome to the WSU Archive Search Tool! This program helps you search through ar
    - Create a folder called `collections` in your program directory
    - Copy your XML files into this folder. This should be the entire WSU collection fileset.
 
-### Step 4: Run the Program
+### Step 5: Run the Program
 
 1. First-time setup:
    - Open PowerShell
