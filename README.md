@@ -1,6 +1,6 @@
 # WSU Archive Search Tool
 
-Welcome to the WSU Archive Search Tool! This program helps you search through archival collection files (in XML format) to find materials related to your research questions. It uses advanced AI technology to understand your queries and find relevant documents from the archives.
+Welcome to the WSU Archive Search Tool! This program helps you search through archival collection files (in XML format) to find materials related to your research questions. 
 
 ## What You'll Need
 
@@ -17,7 +17,8 @@ Welcome to the WSU Archive Search Tool! This program helps you search through ar
 
 1. Download Python:
    - Go to [python.org/downloads](https://www.python.org/downloads/)
-   - Click the big yellow "Download Python" button
+   - **Important**: Download Python 3.10.x (e.g., Python 3.10.11)
+   - Scroll down to find Python 3.10.x if it's not the default download
    - Save the installer to your computer
 
 2. Install Python:
@@ -27,8 +28,24 @@ Welcome to the WSU Archive Search Tool! This program helps you search through ar
    - Wait for the installation to complete
    - Click "Close" when done
 
+3. Verify Python version:
+   - Open PowerShell (press Windows key + X, then press I)
+   - Run this command:
+     ```powershell
+     python --version
+     ```
+   - You should see "Python 3.10.x" (where x is the minor version number)
+   - If you see a different version, you may need to uninstall other Python versions or adjust your PATH
+
+**Note**: This program requires Python 3.10 specifically. Other versions (including newer ones) may cause compatibility issues with the required packages.
+
 ### Step 2: Get an OpenAI API Key
 
+**Option A: Get an API Key from the Program Owner (Recommended)**
+- Contact the program owner to request an API key
+- This is the easiest option and ensures you get a key that's already set up for the program
+
+**Option B: Get Your Own API Key**
 1. Create an OpenAI account:
    - Go to [platform.openai.com](https://platform.openai.com/)
    - Click "Sign Up" and create an account
@@ -41,6 +58,19 @@ Welcome to the WSU Archive Search Tool! This program helps you search through ar
    - Click "Create new secret key"
    - Copy the key and save it somewhere safe
 
+3. Set up the API key as an environment variable:
+   - Open PowerShell (press Windows key + X, then press I)
+   - Run this command (replace YOUR_API_KEY with your actual key):
+     ```powershell
+     [System.Environment]::SetEnvironmentVariable('OPENAI_API_KEY', 'YOUR_API_KEY', 'User')
+     ```
+   - Close and reopen PowerShell for the changes to take effect
+   - To verify it worked, run:
+     ```powershell
+     $env:OPENAI_API_KEY
+     ```
+     You should see your API key displayed
+
 ### Step 3: Set Up the Program
 
 1. Download the program:
@@ -48,33 +78,59 @@ Welcome to the WSU Archive Search Tool! This program helps you search through ar
    - Extract them to a folder on your computer (e.g., `C:\Users\YourName\Documents\WSU_Archive_Search_Tool`)
 
 2. Install required software:
-   - Open Command Prompt (press Windows key + R, type `cmd`, press Enter)
+   - Open PowerShell (press Windows key + X, then press I)
    - Navigate to your program folder:
-     ```
-     cd C:\Users\YourName\Documents\WSU_Archive_Search_Tool
+     ```powershell
+     cd "C:\Users\YourName\Documents\WSU_Archive_Search_Tool"
      ```
    - Install the required packages:
-     ```
+     ```powershell
      pip install -r requirements.txt
      ```
 
 3. Add your XML files:
    - Create a folder called `collections` in your program directory
-   - Copy your XML files into this folder
+   - Copy your XML files into this folder. This should be the entire WSU collection fileset.
 
 ### Step 4: Run the Program
 
 1. First-time setup:
-   - Open Command Prompt
+   - Open PowerShell
+   - Navigate to your program folder:
+     ```powershell
+     cd "C:\Users\YourName\Documents\WSU_Archive_Search_Tool"
+     ```
+   - Run the program with the rebuild flag:
+     ```powershell
+     python main.py --rebuild
+     ```
+   - This will process all your XML files and create a search index (this may take some time -- as in 2+ hours)
+   - **Note**: You only need to use `--rebuild` the first time you run the program, or if you add new XML files to the collections folder
+
+2. Normal usage (after first-time setup):
+   - Open PowerShell
    - Navigate to your program folder
    - Run the program:
-     ```
+     ```powershell
      python main.py
      ```
-   - When prompted, enter your OpenAI API key
-   - The program will process your XML files (this may take some time)
+   - The program will load the existing index and be ready for queries
 
-2. Searching the archives:
+3. Additional options:
+   - To see the documents that were retrieved for your query:
+     ```powershell
+     python main.py --show_retrieved
+     ```
+   - To rebuild the index (if you've added new XML files):
+     ```powershell
+     python main.py --rebuild
+     ```
+   - To combine both options:
+     ```powershell
+     python main.py --rebuild --show_retrieved
+     ```
+
+4. Searching the archives:
    - Once the program is ready, you can enter your search queries
    - For example:
      - "What collections have information about early Washington State history?"
@@ -86,11 +142,11 @@ Welcome to the WSU Archive Search Tool! This program helps you search through ar
 
 Here are some example queries you can try:
 
-1. "Find collections related to World War II at Washington State"
-2. "Search for documents about early campus buildings"
+1. "Find collections related to World War II at Washington State."
+2. "Search for documents about early campus buildings in the 1800s."
 3. "What materials exist about student protests in the 1970s?"
-4. "Find information about agricultural research in the 1950s"
-5. "Search for letters or diaries from early faculty members"
+4. "Find information about agricultural research in the 1950s."
+5. "Search for letters or diaries from early faculty  from 1850-1870."
 
 ## Troubleshooting
 
@@ -99,14 +155,18 @@ If you encounter any issues:
 1. **Python not found error**:
    - Make sure Python is installed correctly
    - Restart your computer
-   - Try running `python --version` in Command Prompt to verify installation
+   - Try running `python --version` in PowerShell to verify installation
 
 2. **Missing files error**:
    - Check that your XML files are in the `collections` folder
    - Make sure the folder name is spelled exactly as "collections"
 
 3. **API key issues**:
-   - Verify your OpenAI API key is correct
+   - Verify your OpenAI API key is set correctly:
+     ```powershell
+     $env:OPENAI_API_KEY
+     ```
+   - If nothing shows up, you need to set the environment variable again
    - Make sure you have sufficient credits in your OpenAI account
 
 4. **Memory errors**:
