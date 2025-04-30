@@ -67,7 +67,7 @@ openai.api_key = openai_api_key
 try:
     logger.info("Initializing embedding model...")
     Settings.embed_model = HuggingFaceEmbedding(
-        model_name="sentence-transformers/all-roberta-large-v1",
+        model_name="BAAI/bge-large-en-v1.5",
         device="cuda" if torch.cuda.is_available() else "cpu"
     )
     Settings.chunk_size = 4096
@@ -167,7 +167,7 @@ def run_rag_query(query, index, top_k=30, show_retrieved=False):
         )
         
         # Step 2: Retrieve DISTINCT documents. We don't want a bunch from the same collection.
-        nodes = retrieve_distinct_documents(query, index, top_k=30, overfetch_k=100)
+        nodes = retrieve_distinct_documents(query, index, top_k=30)
 
         # Step 3: Build a clean context
         selected_contexts = []
@@ -232,11 +232,12 @@ def run_rag_query(query, index, top_k=30, show_retrieved=False):
         logger.error(f"RAG query failed: {str(e)}")
         return f"Error: {str(e)}"
 
-def retrieve_distinct_documents(query, index, top_k=30, overfetch_k=300):
+def retrieve_distinct_documents(query, index, top_k=30, overfetch_k=150):
     retriever = index.as_retriever(
         similarity_top_k=overfetch_k,
         retriever_mode="hybrid"
     )
+    
     nodes = retriever.retrieve(query)
 
     # Deduplicate by collection_unitid

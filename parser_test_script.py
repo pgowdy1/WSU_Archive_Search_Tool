@@ -12,7 +12,7 @@ documents = reader.load_data(file_path)
 print(f"\nParsed {len(documents)} documents:\n")
 for i, doc in enumerate(documents):
     print(f"--- Document {i+1} ---")
-    print("Text:", doc.text.strip()[:200], "...")
+    print("Text:", doc.text.strip(), "...")
     print("Metadata:", json.dumps(doc.metadata, indent=2))
     print()
 

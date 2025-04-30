@@ -62,17 +62,31 @@ class SmartEADXMLReader(BaseReader):
         hierarchy_str = " > ".join(context_path)
 
         text_lines = []
+        # --- RICH EMBEDDING: include all valuable fields ---
+        if inherited_metadata.get("repository"):
+            text_lines.append(f"Repository: {inherited_metadata['repository']}")
+        if inherited_metadata.get("collection_unitid"):
+            text_lines.append(f"Collection ID: {inherited_metadata['collection_unitid']}")
+        if inherited_metadata.get("physdesc"):
+            text_lines.append(f"Physical Description: {inherited_metadata['physdesc']}")
         if title:
             text_lines.append(f"Title: {title}")
         if unitid:
-            text_lines.append(f"ID: {unitid}")
+            text_lines.append(f"Unit ID: {unitid}")
         if date:
             text_lines.append(f"Date: {date}")
         if hierarchy_str:
             text_lines.append(f"Hierarchy: {hierarchy_str}")
         for key, val in containers.items():
             text_lines.append(f"Container ({key}): {val}")
+        if inherited_metadata.get("scopecontent"):
+            text_lines.append(f"Scope and Content: {inherited_metadata['scopecontent']}")
+        if inherited_metadata.get("separatedmaterial"):
+            text_lines.append(f"Separated Material: {inherited_metadata['separatedmaterial']}")
+        if inherited_metadata.get("bibliography"):
+            text_lines.append(f"Bibliography: {inherited_metadata['bibliography']}")
 
+        # Add paragraph text
         for p in node.findall(".//{*}p"):
             content = p.text.strip() if p.text else ""
             if content:
